@@ -3,8 +3,6 @@ const  { requestHeader , insertDataToMongodb, generateUnique10DigitId} = require
 
 const path = require("path");
 const axios = require("axios");
-const fs = require("fs");
-const FormData = require("form-data");
 
 const cloudinary = require("../config/cloudinary");
 
@@ -31,29 +29,16 @@ exports.createPost = async (req,res)=>{
     
     // upload the image into imgBB.com
 
-    // const filePath = path.join(__dirname, "..", "uploads", req.file.filename);
-    // const formData = new FormData();
-    // formData.append("image", fs.createReadStream(filePath));
-    // formData.append("key", process.env.IMGBB_API_KEY);
-    // // Upload to ImgBB
-    // const response = await axios.post(
-    //   "https://api.imgbb.com/1/upload",
-    //   formData,
-    //   {
-    //     headers: formData.getHeaders(),
-    //   }
-    // );
-
-    // const imageUrl = response.data.data.url;
-    // const deleteUrl = response.data.data.delete_url;
+    const filePath = path.join(__dirname, "..", "uploads", req.file.filename);
     
 
     //upload image to cloudinary 
-    const result = await cloudinary.uploader.upload(req.file.buffer, {
+    const result = await cloudinary.uploader.upload(filePath , {
       resource_type: 'auto', // auto-detect file type (image or video)
       folder: 'posts', // optional, to organize the uploads
     });
 
+    console.log("result in the cloudinary ",result);
     const imageUrl = result.secure_url;
     const imageId = result.public_id;
 
@@ -153,8 +138,15 @@ exports.deletePost = async (req,res)=>{
     if(!post){
       res.json({message: "post not present"});
     }
-    const deleteUrl = post.deleteUrl;
-    deleteImageFromImgBB(deleteUrl);
+    // delete from the cloudinary bucket 
+    const imageId = post.imageId;
+    cloudinary.uploader.destroy(imageId, function(error, result) {
+      if (error) {
+        console.error('Delete failed:', error);
+      } else {
+        console.log('Delete success:', result);
+      }
+    });
 
     const result = await collection.deleteOne({ postId: postId });
 
