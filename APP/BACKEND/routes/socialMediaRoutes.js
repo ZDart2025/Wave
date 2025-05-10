@@ -26,7 +26,7 @@ const upload = multer({ storage: storage });
 
 app.post("/createPost",upload.single("file"),createPost)
 app.get("/viewPost",viewPost)
-app.post("/editPost",editPost)
+app.post("/editPost",upload.single("file"),editPost)
 app.post("/deletePost",deletePost)
 
 module.exports = app;

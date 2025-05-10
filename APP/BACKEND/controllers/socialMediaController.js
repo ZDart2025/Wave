@@ -140,7 +140,7 @@ exports.deletePost = async (req,res)=>{
     }
     // delete from the cloudinary bucket 
     const imageId = post.imageId;
-    cloudinary.uploader.destroy(imageId, function(error, result) {
+    let hi = cloudinary.uploader.destroy(imageId, function(error, result) {
       if (error) {
         console.error('Delete failed:', error);
       } else {
@@ -169,6 +169,52 @@ exports.deletePost = async (req,res)=>{
 }
 
 //api => "/teacher/socialmedia/editPost" method = post
-exports.editPost = (req,res) =>{
+exports.editPost = async (req,res) =>{
 
+  try{
+    const authHeader = req.headers["authorization"];
+    const token = requestHeader(authHeader);
+
+    if(!token){
+      res.status(401).json({message: "token was not received to create post api..."});
+  }
+
+    // receive from the body 
+
+    const {postId,postContent} = req.body;
+    const filePath = path.join(__dirname, "..", "uploads", req.file.filename);
+
+
+    const result = await cloudinary.uploader.upload(filePath , {
+      resource_type: 'auto', // auto-detect file type (image or video)
+      folder: 'posts', // optional, to organize the uploads
+    });
+
+    console.log("result in the cloudinary ",result);
+    const imageUrl = result.secure_url;
+    const imageId = result.public_id;
+    //database connection
+    const {db,client} = await connectToMongoDB();
+    const collection = db.collection('Posts');
+
+    await collection.updateOne(
+      {postId : postId},
+      {$set : 
+        {
+          postContent : postContent,
+          imageId : imageId,
+          postUrl :imageUrl,
+          createdAt : Date()
+        }}
+    );
+
+    console.log("post updated successfully");
+    client.close();
+    return res.status(200).json({ message: "Post Updated  successfully" });
+  }
+  catch(err){
+    console.log("error :",err );
+    return res.status(500).json({ message: "Internal server error" });
+
+  }
 }
